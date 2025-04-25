@@ -4,7 +4,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import find_peaks
-
+import os
 VALID_MIN_FLIGHT_TIME = 0.3
 VALID_MAX_FLIGHT_TIME = 0.82
 
@@ -76,10 +76,25 @@ def convert_txt_to_df(file_path):
             current_index += 1
         i += 1
 
-    # filter out invalid jumps based on flight time
-    valid_jump_pairs = [pair for pair in jump_pairs if VALID_MIN_FLIGHT_TIME <= pair['flight_time'] <= VALID_MAX_FLIGHT_TIME]
+    # find median flight time
+    flight_times = [pair['flight_time'] for pair in jump_pairs]
+    median_flight_time = np.median(flight_times)
+    print(f"Median flight time: {median_flight_time:.2f}s")
 
-    print("\nDEBUG - Valid jumps:", valid_jump_pairs)
+    # Calculate distances from median and sort
+    distances_from_median = [(i, abs(t - median_flight_time)) for i, t in enumerate(flight_times)]
+    distances_from_median.sort(key=lambda x: x[1])  # Sort by distance from median
+
+    # Take the 10 most centered jumps
+    centered_indices = [x[0] for x in distances_from_median[:10]]
+    valid_jump_pairs = [jump_pairs[i] for i in centered_indices]
+
+    # For reference, show the range of selected jumps
+    selected_times = [jump_pairs[i]['flight_time'] for i in centered_indices]
+    print(f"Selected flight times range: {min(selected_times):.2f}s to {max(selected_times):.2f}s")
+    print("Selected flight times:")
+    for i, time in enumerate(selected_times):
+        print(f"Jump {i+1}: {time:.2f}s (distance from median: {abs(time - median_flight_time):.3f}s)")
 
     # Create DataFrame
     df = pd.DataFrame(data_arrays, index=timestamps)
@@ -180,7 +195,7 @@ def plot_one_sensor(df, sensor_name, peaks=None, jump_cycles=None):
     plt.ylabel(sensor_name)
     plt.legend()
     plt.grid(True)
-    plt.show()
+    # plt.show()
 
 # test the function above
 df, valid_release_landing_pairs = convert_txt_to_df('data/AnnieGu.txt')
@@ -253,12 +268,12 @@ def plot_list_of_sensors(df, sensor_names):
     
     # Adjust layout to prevent overlap
     plt.tight_layout()
-    plt.show()
+    # plt.show()
 
 
 def find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50):
     """
-    Extract exactly num_jumps peaks from the data, representing each jump
+    Extract exactly num_jumps peaks from the data, but only during in_flight periods
     
     Parameters:
     - df: pandas DataFrame containing the time series data
@@ -271,16 +286,27 @@ def find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50):
     - peak_properties: dictionary containing properties of the peaks
     """
     
+    # Create a masked array where non-flight periods are masked
     data = df[column].values
+    mask = ~df['in_flight'].values  # Invert because numpy masks work opposite (True means masked)
+    masked_data = np.ma.array(data, mask=mask)
+    
+    # Replace non-flight periods with NaN to ensure peaks aren't found there
+    data_with_nan = data.copy()
+    data_with_nan[mask] = np.nan
     
     # Start with a high prominence and gradually decrease until we find exactly num_jumps peaks
-    prominence = np.max(data) - np.min(data)
+    prominence = np.nanmax(data_with_nan) - np.nanmin(data_with_nan)
     step = prominence / 100
     
     while prominence > 0:
-        peak_indices, peak_properties = find_peaks(data, 
+        peak_indices, peak_properties = find_peaks(data_with_nan, 
                                                  prominence=prominence,
                                                  distance=window_size)  # Minimum distance between peaks
+        
+        # Only keep peaks that are during flight
+        flight_peaks = [idx for idx in peak_indices if df['in_flight'].iloc[idx]]
+        peak_indices = np.array(flight_peaks)
         
         if len(peak_indices) == num_jumps:
             break
@@ -305,22 +331,27 @@ def find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50):
     
     # Plot to visualize the peaks
     plt.figure(figsize=(15, 6))
-    plt.plot(df['Timestamp'], data, 'b-', label='Data')
+    
+    # Plot the full data in light gray
+    plt.plot(df['Timestamp'], data, 'lightgray', label='Non-flight Data', alpha=0.5)
+    
+    # Plot in-flight data in blue
+    flight_mask = df['in_flight']
+    plt.plot(df[flight_mask]['Timestamp'], data[flight_mask], 'b-', label='In-flight Data')
     
     # Plot peaks
     plt.plot(df['Timestamp'].iloc[peak_indices], 
              data[peak_indices], "ro", label='Peaks')
     
-    # Add Release/Landing points if they exist
-    if 'Is_Release' in df.columns:
-        release_points = df[df['Is_Release']].index
-        plt.plot(df['Timestamp'].iloc[release_points], 
-                data[release_points], "bo", label='Release')
+    # Add Release points
+    release_points = df[df['is_release']].index
+    plt.plot(df['Timestamp'].iloc[release_points], 
+            data[release_points], "go", label='Release', marker='^')
     
-    if 'Is_Landing' in df.columns:
-        landing_points = df[df['Is_Landing']].index
-        plt.plot(df['Timestamp'].iloc[landing_points], 
-                data[landing_points], "go", label='Landing')
+    # Add Landing points
+    landing_points = df[df['is_landing']].index
+    plt.plot(df['Timestamp'].iloc[landing_points], 
+            data[landing_points], "mo", label='Landing', marker='v')
     
     # Add jump numbers to the plot
     for i, idx in enumerate(peak_indices):
@@ -331,17 +362,19 @@ def find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50):
     plt.xlabel('Time')
     plt.ylabel('Value')
     plt.ylim(-1.7, 1.7)
-    plt.title(f'Detected {num_jumps} Jumps')
+    plt.title(f'Detected {len(peak_indices)} Jumps (In-flight Only)')
     plt.legend()
     plt.grid(True)
-    plt.show()
+    # plt.show()
     
     # Create a summary DataFrame for the jumps
     jump_summary = pd.DataFrame({
-        'Jump_Number': range(1, num_jumps + 1),
+        'Jump_Number': range(1, len(peak_indices) + 1),
         'Timestamp': df['Timestamp'].iloc[peak_indices],
         'Peak_Value': data[peak_indices],
-        'Peak_Index': peak_indices
+        'Peak_Index': peak_indices,
+        'Release_Index': [release_points[i] for i in range(len(peak_indices))],
+        'Landing_Index': [landing_points[i] for i in range(len(peak_indices))]
     })
     
     print("\nJump Summary:")
@@ -441,7 +474,7 @@ def test_window_sizes(df, window_sizes=[20, 50, 100, 150], num_jumps=10, column=
         ax.grid(True)
     
     plt.tight_layout()
-    plt.show()
+    # # plt.show()
 
     # Print time differences between peaks
     print("\nTime differences between consecutive peaks:")
@@ -520,6 +553,7 @@ def extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50):
         buffer = window_size // 4
         cycle_start = max(0, left_idx - buffer)
         cycle_end = min(len(data), right_idx + buffer)
+
         
         # Create cycle data
         cycle_df = df.iloc[cycle_start:cycle_end+1].copy()
@@ -568,7 +602,9 @@ def extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50):
     plt.show()
     return jump_cycles
 
-# test the function above
+
+
+# USAGE EXAMPLE
 df, valid_release_landing_pairs = convert_txt_to_df('data/AnnieGu.txt')
 store_df_to_csv(df, 'data/AnnieGu.csv')
 peak_indices, peak_properties, jump_summary = find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50)
