@@ -599,14 +599,52 @@ def extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50):
     
     plt.suptitle(f'Jump Cycles Analysis - {column}', y=1.02, fontsize=14)
     plt.tight_layout()
-    plt.show()
+    #plt.show()
     return jump_cycles
 
-
+def filter_df_by_cycles(original_df, jump_cycles):
+    """
+    Filter the original dataframe to only include rows that are part of any jump cycle
+    
+    Parameters:
+    - original_df: The original full DataFrame
+    - jump_cycles: List of DataFrames, each containing a jump cycle
+    
+    Returns:
+    - filtered_df: DataFrame containing only the rows that are part of any jump cycle
+    """
+    # Create a boolean mask initialized to False
+    cycle_mask = pd.Series(False, index=original_df.index)
+    
+    # For each cycle, mark its rows as True in the mask
+    for cycle_df in jump_cycles:
+        cycle_start = cycle_df.index[0]
+        cycle_end = cycle_df.index[-1]
+        cycle_mask[cycle_start:cycle_end+1] = True
+    
+    # Apply the mask to get only the rows that are part of any cycle
+    filtered_df = original_df[cycle_mask].copy()
+    
+    print(f"Original DataFrame rows: {len(original_df)}")
+    print(f"Filtered DataFrame rows: {len(filtered_df)}")
+    print(f"Kept {len(filtered_df)/len(original_df)*100:.1f}% of original data")
+    
+    return filtered_df
 
 # USAGE EXAMPLE
-df, valid_release_landing_pairs = convert_txt_to_df('data/AnnieGu.txt')
-store_df_to_csv(df, 'data/AnnieGu.csv')
-peak_indices, peak_properties, jump_summary = find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50)
-jump_cycles = extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50)
+# df, valid_release_landing_pairs = convert_txt_to_df('data/AnnieGu.txt')
+# store_df_to_csv(df, 'data/AnnieGu.csv')
+# peak_indices, peak_properties, jump_summary = find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50)
+# jump_cycles = extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50)
+# filtered_df = filter_df_by_cycles(df, jump_cycles)
+# store_df_to_csv(filtered_df, 'data/AnnieGu_filtered.csv')
 
+# run this for all jump files
+for file in os.listdir('data'):
+    if file.endswith('.txt'):
+        df, valid_release_landing_pairs = convert_txt_to_df(f'data/{file}')
+        store_df_to_csv(df, f'data/{file}.csv')
+        peak_indices, peak_properties, jump_summary = find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50)
+        jump_cycles = extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50)
+        filtered_df = filter_df_by_cycles(df, jump_cycles)
+        store_df_to_csv(filtered_df, f'data/{file}_filtered.csv')
