@@ -6,12 +6,17 @@ import numpy as np
 from scipy.signal import find_peaks
 import glob
 import os
+
+# CONSTANTS
 VALID_MIN_FLIGHT_TIME = 0.3
 VALID_MAX_FLIGHT_TIME = 0.82
 NUM_SENSORS = 80
 DROP_SENSORS_THRESHOLD = 0.2
 SUM_THRESHOLD = 20
 HALF_WINDOW_SIZE = 90
+
+
+# FUNCTIONS
 def pool_df(df, pool_type='sum'):
     # sum across all sensors
     if pool_type == 'sum':
