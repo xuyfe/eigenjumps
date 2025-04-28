@@ -342,8 +342,7 @@ def plot_list_of_sensors(df, sensor_names):
     plt.tight_layout()
     plt.show()
 
-
-def convert_and_plot(file_path):
+def convert(file_path):
     # process and clean
     df, jump_sets = convert_txt_to_df(file_path)
     cleaned_df, valid_jump_sets = clean_df(df.copy(), jump_sets)
@@ -352,50 +351,11 @@ def convert_and_plot(file_path):
     # find jump cycles
     jump_cycles = find_jump_cycles(df, valid_jump_sets)
     summed_jump_cycles_df = format_jumps_csv(file_path, jump_cycles)
+    return summed_jump_cycles_df
 
+
+def convert_and_plot(file_path):
+    summed_jump_cycles_df = convert(file_path)
     # plot the jump cycles
     plot_jump_cycles(summed_jump_cycles_df)
-
-    # plot the one sensor
-    # plot_one_sensor(df, 'sum', jump_cycles=jump_cycles)
-
-
-
-# delete files that have _filtered in the name
-for file_path in glob.glob("data/*x"):
-    os.remove(file_path)
-
-# plot the one sensor
-#df_annie, valid_jump_sets = clean_df(df_annie, jump_sets)
-#print(valid_jump_sets)
-#jump_cycles = find_jump_cycles(df_annie, valid_jump_sets)
-# with open('data/AnnieGu_jumps_summed.csv', 'w') as file:
-#     for cycle in jump_cycles:
-#         file.write(cycle.to_csv(index=False))
-# summed_jump_cycles_df = format_jumps_csv('data/NoahJung.txt', jump_cycles)
-#plot_jump_cycles(summed_jump_cycles_df)
-
-# df_colin, jump_sets = convert_txt_to_df('data/ColinSloan.txt')
-# print_mean_of_sensors(df_colin)
-# cleaned_df_colin = clean_df(df_colin.copy())
-# print_mean_of_sensors(cleaned_df_colin)
-# 
-# df_colin = pool_df(df_colin, pool_type='sum')
-# cleaned_df_colin = pool_df(cleaned_df_colin, pool_type='sum')
-# 
-# plot_one_sensor(df_colin, 'sum')
-# plot_one_sensor(cleaned_df_colin, 'sum')
-
-
-# 
-# df_caroline, jump_sets = convert_txt_to_df('data/Caroline.txt')
-# df_caroline = clean_df(df_caroline)
-# df_caroline = pool_df(df_caroline, pool_type='sum')
-# store_df_to_csv(df_caroline, 'data/Caroline.csv')
-# plot_one_sensor(df_caroline, 'sum')
-# 
-# df_chu, jump_sets = convert_txt_to_df('data/Chu.txt')
-# df_chu = clean_df(df_chu)
-# df_chu = pool_df(df_chu, pool_type='sum')
-# store_df_to_csv(df_chu, 'data/Chu.csv')
-# plot_one_sensor(df_chu, 'sum')
+    return
