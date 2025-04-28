@@ -193,7 +193,7 @@ def format_jumps_csv(file_path, jump_cycles: list[pd.DataFrame]):
     file_name = file_path.split('/')[-1]
     file_name = file_name.split('.')[0]
     summed_file_path = os.path.join(os.path.dirname(file_path), file_name + '_jumps_summed.csv')
-    all_sensors_file_path = os.path.join(os.path.dirname(file_path), file_name + '_all_sensors.csv')
+    # all_sensors_file_path = os.path.join(os.path.dirname(file_path), file_name + '_all_sensors.csv')
 
     summed_jump_cycles = [cycle.loc["sum", :] for cycle in jump_cycles]
     summed_jump_cycles_df = pd.DataFrame(summed_jump_cycles)
