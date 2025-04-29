@@ -6,14 +6,14 @@ def main():
     RETURNS: None
     CREATES: File called "AnnieGu_jumps_summed.csv" in the data folder
     '''
-    convert_and_plot("data/AnnieGu.txt")
+    convert_and_plot("data/Garrett.txt")
 
     '''
     USAGE: Takes in raw data (txt) and returns a df of jump cycles
     RETURNS: df of jump cycles
     CREATES: File called "AnnieGu_jumps_summed.csv" in the data folder
     '''
-    jump_df = convert("data/AnnieGu.txt")
+    jump_df = convert("data/Garrett.txt")
 
     '''
     USAGE: Takes in a df of jump cycles and plots them
