@@ -6,14 +6,16 @@ import numpy as np
 from scipy.signal import find_peaks
 import glob
 import os
+from sklearn.metrics.pairwise import cosine_similarity
 
 # CONSTANTS
 VALID_MIN_FLIGHT_TIME = 0.3
 VALID_MAX_FLIGHT_TIME = 0.82
 NUM_SENSORS = 80
-DROP_SENSORS_THRESHOLD = 0.2
+DROP_SENSORS_THRESHOLD = 0.4
 SUM_THRESHOLD = 20
-HALF_WINDOW_SIZE = 90
+HALF_WINDOW_SIZE = 85
+HALF_WINDOW_SIZE = 85
 
 
 # FUNCTIONS
@@ -58,26 +60,27 @@ def convert_txt_to_df(file_path):
         if "Release" in line or "Landing" in line:
             to_amend = data_arrays.pop()
             if "Release" in line:
-                print("RELEASE: ", to_amend[0])
+                #print("RELEASE: ", to_amend[0])
                 current_jump_set["release_time"] = to_amend[0]
                 to_amend[1] = True
                 to_amend[2] = False
             elif "Landing" in line and "release_time" in current_jump_set:
-                print("LANDING: ", to_amend[0])
+                #print("LANDING: ", to_amend[0])
                 current_jump_set["landing_time"] = to_amend[0]
                 # search for flight time in the next line
                 flight_time_found = False
                 for offset in range(1, 4):  # Look ahead up to 3 lines
                     if i + offset < len(sliced_lines):
-                        print(f"Checking line {i+offset}: {sliced_lines[i+offset].strip()}")
+                        #(f"Checking line {i+offset}: {sliced_lines[i+offset].strip()}")
                         flight_time_match = re.search(flight_time_pattern, sliced_lines[i + offset])
                         if flight_time_match:
-                            print("Found flight time:", flight_time_match.group(1))
+                            #print("Found flight time:", flight_time_match.group(1))
                             current_jump_set["flight_time"] = float(flight_time_match.group(1))
                             flight_time_found = True
                             break
                 if not flight_time_found:
-                    print("No flight time found for this landing.")
+                    #print("No flight time found for this landing.")
+                    pass
                 to_amend[1] = False
                 to_amend[2] = True
 
@@ -118,19 +121,34 @@ def print_mean_of_sensors(df):
     return
 
 
-def find_valid_jump_set(df, jump_sets, sum_threshold):
+def find_valid_jump_set(df, jump_sets, sum_threshold, min_separation=60):
     valid_jump_sets, invalid_jump_sets = [], []
+    last_valid_landing_idx = None
+
     for jump_set in jump_sets:
         # Get the time window for this jump
         release_time = pd.to_datetime(jump_set['release_time'])
         landing_time = pd.to_datetime(jump_set['landing_time'])
         # Filter the DataFrame for this window
         window_df = df[(df['Timestamp'] >= release_time) & (df['Timestamp'] <= landing_time)]
+
+        # Find the index of the release in the DataFrame
+        release_idx = df.index[df['Timestamp'] == release_time][0]
+
+        # Check for minimum separation from last valid jump
+        if last_valid_landing_idx is not None and (release_idx - last_valid_landing_idx) < min_separation:
+            invalid_jump_sets.append(jump_set)
+            continue
+
         # Check if any value in 'sum' is below the threshold
         if (window_df['sum'] < sum_threshold).any():
             valid_jump_sets.append(jump_set)
+            # Update last_valid_landing_idx
+            landing_idx = df.index[df['Timestamp'] == landing_time][0]
+            last_valid_landing_idx = landing_idx
         else:
             invalid_jump_sets.append(jump_set)
+
     return valid_jump_sets, invalid_jump_sets
 
 def clear_invalid_jump_sets(df, invalid_jump_sets):
@@ -142,6 +160,28 @@ def clear_invalid_jump_sets(df, invalid_jump_sets):
         df.loc[(df['Timestamp'] >= invalid_jump_set['release_time']) & (df['Timestamp'] <= invalid_jump_set['landing_time']), 'in_flight'] = False
     return df
 
+
+def filter_highest_pairwise_similar_jump_cycles(summed_jump_cycles_df, similarity_threshold=0.9):
+    # 1. Extract only the time_step columns
+    time_cols = [col for col in summed_jump_cycles_df.columns if col.startswith('time_step_')]
+    data = summed_jump_cycles_df[time_cols].values
+
+    # 2. Compute pairwise cosine similarity matrix
+    sim_matrix = cosine_similarity(data)
+
+    # 3. For each jump, find the highest similarity to any other jump (excluding self)
+    np.fill_diagonal(sim_matrix, -np.inf)  # Exclude self-comparison
+    max_similarities = sim_matrix.max(axis=1)
+
+    # 4. Keep only those with max similarity above the threshold
+    keep_mask = max_similarities >= similarity_threshold
+    filtered_df = summed_jump_cycles_df[keep_mask].reset_index(drop=True)
+
+    print("========== MAX PAIRWISE SIMILARITIES ==========")
+    print(max_similarities)
+    print(f"Kept {keep_mask.sum()} out of {len(summed_jump_cycles_df)} jump cycles with max pairwise similarity >= {similarity_threshold}")
+    return filtered_df, max_similarities
+
 def clean_df(df, jump_sets):
     # drop sensors
     min_avg = 1000
@@ -152,7 +192,7 @@ def clean_df(df, jump_sets):
             df[col] = 0
         if avg < min_avg:
             min_avg = avg
-
+#
     valid_jump_sets, invalid_jump_sets = find_valid_jump_set(df, jump_sets, SUM_THRESHOLD)
     df = clear_invalid_jump_sets(df, invalid_jump_sets)
     return df, valid_jump_sets
@@ -173,7 +213,7 @@ def find_jump_cycles(df, valid_jump_sets):
         closest_timestamp = df[df['Timestamp'] > midpoint]['Timestamp'].min()
         # take 90 indices before and after the closest timestamp
         middle_idx = df.index[df['Timestamp'] == closest_timestamp][0]
-        window_size = HALF_WINDOW_SIZE  # or whatever number of rows you want
+        window_size = HALF_WINDOW_SIZE # or whatever number of rows you want
         start_idx = max(0, middle_idx - window_size)
         end_idx = min(len(df) - 1, middle_idx + window_size)
 
@@ -197,7 +237,7 @@ def format_jumps_csv(file_path, jump_cycles: list[pd.DataFrame]):
     # create file name
     file_name = file_path.split('/')[-1]
     file_name = file_name.split('.')[0]
-    summed_file_path = os.path.join(os.path.dirname(file_path), file_name + '_jumps_summed.csv')
+    summed_file_path = "../Math_232_Data/jump_data_clean/" + file_name + '_jumps_summed.csv'
     # all_sensors_file_path = os.path.join(os.path.dirname(file_path), file_name + '_all_sensors.csv')
 
     summed_jump_cycles = [cycle.loc["sum", :] for cycle in jump_cycles]
@@ -208,34 +248,50 @@ def format_jumps_csv(file_path, jump_cycles: list[pd.DataFrame]):
     # pd.concat(jump_cycles, axis=0).to_csv(all_sensors_file_path, index=False)
     return summed_jump_cycles_df
 
-def plot_jump_cycles(summed_jump_cycles_df: pd.DataFrame):
-    print("========== PLOTTING JUMP CYCLES ==========")
-    print(summed_jump_cycles_df.head())
-    print("========== SHAPE ==========")
-    print(summed_jump_cycles_df.shape)
-    print("========== COLUMNS ==========")
-    print(summed_jump_cycles_df.columns)
-    # plot each of the jump cycles in a grid
-    n_rows = 3
-    n_cols = 3
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 5*n_rows))
-    axes = axes.flatten()
+def plot_jump_cycles(summed_jump_cycles_df: pd.DataFrame, name=None, separate=False):
+    # print("========== PLOTTING JUMP CYCLES ==========")
+    # print(summed_jump_cycles_df.head())
+    # print("========== SHAPE ==========")
+    # print(summed_jump_cycles_df.shape)
+    # print("========== COLUMNS ==========")
+    # print(summed_jump_cycles_df.columns)
     time_cols = [col for col in summed_jump_cycles_df.columns if col.startswith('time_step_')]
 
-    for i, ax in enumerate(axes):
-        if i < len(summed_jump_cycles_df):
-            ax.plot(time_cols, summed_jump_cycles_df.iloc[i][time_cols])
-            ax.set_title(f'Jump Cycle {i+1}')
-        else:
-            ax.axis('off')  # Hide unused subplots
+    if separate:
+        n_cycles = len(summed_jump_cycles_df)
+        n_cols = 3
+        n_rows = (n_cycles + n_cols - 1) // n_cols  # Ceiling division
 
-    plt.tight_layout()
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 5*n_rows))
+        axes = axes.flatten()
+
+        for i, ax in enumerate(axes):
+            if i < n_cycles:
+                ax.plot(time_cols, summed_jump_cycles_df.iloc[i][time_cols])
+                ax.set_title(f'Jump Cycle {i+1}')
+            else:
+                ax.axis('off')  # Hide unused subplots
+        plt.tight_layout()
+    else:
+        plt.figure(figsize=(12, 6))
+        for i, row in summed_jump_cycles_df.iterrows():
+            plt.plot(time_cols, row[time_cols], label=f'Jump Cycle {i+1}')
+            plt.xlabel("")
+            plt.xticks([])
+        # plt.title("Summed Jump Cycles")
+        plt.xlabel("Time Step")
+        plt.ylabel("Summed Value")
+        plt.legend()
+        plt.tight_layout()
+
+    if name is not None:
+        plt.suptitle(name)
     plt.show()
 
 def store_df_to_csv(df_idk, file_path):
     # store the df to a csv file
     df = pd.DataFrame(df_idk)
-    print("REACHING HERE: ", type(df))
+    #("REACHING HERE: ", type(df))
     df.to_csv(file_path, index=False)
     return
 
@@ -248,7 +304,7 @@ def plot_one_sensor(df, sensor_name, peaks=None, jump_cycles=None):
     release_data = df[df['is_release']]
     landing_data = df[df['is_landing']]
     
-    print(release_data)
+    # print(release_data)
     plt.scatter(release_data['Timestamp'], release_data[sensor_name], color='red', label='Release')
     plt.scatter(landing_data['Timestamp'], landing_data[sensor_name], color='blue', label='Landing')
     
@@ -358,9 +414,24 @@ def convert(file_path):
     summed_jump_cycles_df = format_jumps_csv(file_path, jump_cycles)
     return summed_jump_cycles_df
 
+def save_filtered_df(df, file_path):
+    # save the filtered df to a csv file
+    df.to_csv(file_path, index=False)
+    return
 
 def convert_and_plot(file_path):
     summed_jump_cycles_df = convert(file_path)
+    filtered_df, max_similarities = filter_highest_pairwise_similar_jump_cycles(summed_jump_cycles_df, similarity_threshold=0.96)
     # plot the jump cycles
-    plot_jump_cycles(summed_jump_cycles_df)
+    plot_jump_cycles(filtered_df, name=file_path.split('/')[-1])
+    # save the filtered df to a csv file
+    save_filtered_df(filtered_df, file_path.replace(".txt", "_filtered.csv"))
+    # save the max similarities to a txt file
     return
+
+
+# Example usage:
+# summed_jump_cycles_df = convert("data/Garrett.txt")
+# filtered_df, max_similarities = filter_highest_pairwise_similar_jump_cycles(summed_jump_cycles_df, similarity_threshold=0.95)
+# save_filtered_df(filtered_df, "data/Garrett_filtered.csv")
+# plot_jump_cycles(filtered_df)
