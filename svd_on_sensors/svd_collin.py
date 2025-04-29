@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.colors import LinearSegmentedColormap
 
 # Set numpy print options
 np.set_printoptions(suppress=True, precision=2)
@@ -40,38 +41,62 @@ A_input = np.array(valid_rows)
 # Work with the matrix directly
 A = A_input.copy()
 
+# Trim to one Jump
+A = A[1300:1573, :]
+
 # Normalize matrix (optional depending if you want mean-centered)
 total_sum = np.sum(A)
 N = A - total_sum / A.size
 
+
 # Compute SVD
 U, S, VT = np.linalg.svd(N, full_matrices=False)
 
+# Plot heatmap with fixed scale
+plt.figure(figsize=(12, 6))
+img = plt.imshow(np.outer(U[:, 3], VT[3, :]),
+                cmap='OrRd',
+                interpolation='nearest')
+
+plt.colorbar(img, label='Normalized Value', shrink=0.8)
+plt.title("Normalized Matrix Heatmap (One Jump)")
+plt.xlabel("Column Index")
+plt.ylabel("Row Index (Trimmed: 1300-1573)")
+
+# Optional: Add grid lines for clarity
+plt.grid(True, color='gray', linestyle=':', linewidth=0.3, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+print(f'Singular matrix: {S}')
 # Low-rank reconstructions
 # Rebuild using only first k singular values/vectors
 
 def rank_k_approx(U, S, VT, k):
     """Compute rank-k approximation."""
-    return U[:, :k] @ np.diag(S[:k]) @ VT[:k, :]
-
-# Now generate several approximations
-ranks = [1, 2, 5, 10]  # You can add more ranks here!
-
+    return np.outer(U[:, k - 1], VT[k - 1, :])
+# min(U.shape[0], VT.shape[1])
+ranks = [1, 2, 3, 4, 5]  # Full-Rank is min(m,n)
 reconstructed_images = [rank_k_approx(U, S, VT, k) for k in ranks]
+ranks.append(-1)
+reconstructed_images.append(A)
 
-# Plot original and compressed images
-fig, axs = plt.subplots(1, len(reconstructed_images) + 1, figsize=(15, 5))
+# Plot settings
+plt.figure(figsize=(12, 8))  # 2 rows, 3 columns
 
-# Plot original
-axs[0].imshow(A, cmap='gray')
-axs[0].set_title('Original Image')
-axs[0].axis('off')
+rows = [1345, 1382, 1406, 1468, 1502]
+rows_offset = [45, 82, 106, 168, 202]
+for i, (recon, k) in enumerate(zip(reconstructed_images, ranks), 1):
+    first_row_reshaped = recon[45, :].reshape(8, 10)
 
-# Plot reconstructions
-for idx, (img, rank) in enumerate(zip(reconstructed_images, ranks)):
-    axs[idx + 1].imshow(img, cmap='gray')
-    axs[idx + 1].set_title(f'Rank-{rank} Approximation')
-    axs[idx + 1].axis('off')
+    plt.subplot(2, 3, i)  # 2 rows, 3 columns
+    img = plt.imshow(first_row_reshaped, cmap='OrRd', interpolation='nearest')
+    plt.colorbar(img, fraction=0.046, pad=0.04)
+    title = f"Rank-{k}" if k != ranks[-1] else "Full-Rank"
+    plt.title(title)
+    plt.xticks([])
+    plt.yticks([])
 
 plt.tight_layout()
 plt.show()
