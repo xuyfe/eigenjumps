@@ -15,6 +15,7 @@ NUM_SENSORS = 80
 DROP_SENSORS_THRESHOLD = 0.4
 SUM_THRESHOLD = 20
 HALF_WINDOW_SIZE = 85
+HALF_WINDOW_SIZE = 85
 
 
 # FUNCTIONS
@@ -212,7 +213,7 @@ def find_jump_cycles(df, valid_jump_sets):
         closest_timestamp = df[df['Timestamp'] > midpoint]['Timestamp'].min()
         # take 90 indices before and after the closest timestamp
         middle_idx = df.index[df['Timestamp'] == closest_timestamp][0]
-        window_size = HALF_WINDOW_SIZE  # or whatever number of rows you want
+        window_size = HALF_WINDOW_SIZE # or whatever number of rows you want
         start_idx = max(0, middle_idx - window_size)
         end_idx = min(len(df) - 1, middle_idx + window_size)
 
@@ -236,7 +237,7 @@ def format_jumps_csv(file_path, jump_cycles: list[pd.DataFrame]):
     # create file name
     file_name = file_path.split('/')[-1]
     file_name = file_name.split('.')[0]
-    summed_file_path = os.path.join(os.path.dirname(file_path), file_name + '_jumps_summed.csv')
+    summed_file_path = "../Math_232_Data/jump_data_clean/" + file_name + '_jumps_summed.csv'
     # all_sensors_file_path = os.path.join(os.path.dirname(file_path), file_name + '_all_sensors.csv')
 
     summed_jump_cycles = [cycle.loc["sum", :] for cycle in jump_cycles]
