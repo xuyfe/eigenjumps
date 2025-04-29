@@ -13,7 +13,7 @@ def main():
     RETURNS: df of jump cycles
     CREATES: File called "AnnieGu_jumps_summed.csv" in the data folder
     '''
-    jump_df = convert("data/AnnieGu.txt")
+    jump_df = convert("Math_232_Data/data/ColinSloan.txt")
 
     '''
     USAGE: Takes in a df of jump cycles and plots them
