@@ -361,11 +361,11 @@ def find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50):
     
     plt.xlabel('Time')
     plt.ylabel('Value')
-    plt.ylim(-1.7, 1.7)
+    plt.ylim(-20, 1.7)
     plt.title(f'Detected {len(peak_indices)} Jumps (In-flight Only)')
     plt.legend()
     plt.grid(True)
-    # plt.show()
+    plt.show()
     
     # Create a summary DataFrame for the jumps
     jump_summary = pd.DataFrame({
@@ -599,7 +599,7 @@ def extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50):
     
     plt.suptitle(f'Jump Cycles Analysis - {column}', y=1.02, fontsize=14)
     plt.tight_layout()
-    #plt.show()
+    plt.show()
     return jump_cycles
 
 def filter_df_by_cycles(original_df, jump_cycles):
@@ -632,19 +632,19 @@ def filter_df_by_cycles(original_df, jump_cycles):
     return filtered_df
 
 # USAGE EXAMPLE
-# df, valid_release_landing_pairs = convert_txt_to_df('data/AnnieGu.txt')
-# store_df_to_csv(df, 'data/AnnieGu.csv')
-# peak_indices, peak_properties, jump_summary = find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50)
-# jump_cycles = extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50)
-# filtered_df = filter_df_by_cycles(df, jump_cycles)
-# store_df_to_csv(filtered_df, 'data/AnnieGu_filtered.csv')
+df, valid_release_landing_pairs = convert_txt_to_df('data/AnnieGu.txt')
+store_df_to_csv(df, 'data/AnnieGu.csv')
+peak_indices, peak_properties, jump_summary = find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50)
+jump_cycles = extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50)
+filtered_df = filter_df_by_cycles(df, jump_cycles)
+store_df_to_csv(filtered_df, 'data/AnnieGu_filtered.csv')
 
 # run this for all jump files
-for file in os.listdir('data'):
-    if file.endswith('.txt'):
-        df, valid_release_landing_pairs = convert_txt_to_df(f'data/{file}')
-        store_df_to_csv(df, f'data/{file}.csv')
-        peak_indices, peak_properties, jump_summary = find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50)
-        jump_cycles = extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50)
-        filtered_df = filter_df_by_cycles(df, jump_cycles)
-        store_df_to_csv(filtered_df, f'data/{file}_filtered.csv')
+#for file in os.listdir('data'):
+#    if file.endswith('.txt'):
+#        df, valid_release_landing_pairs = convert_txt_to_df(f'data/{file}')
+#        store_df_to_csv(df, f'data/{file}.csv')
+#        peak_indices, peak_properties, jump_summary = find_data_peaks(df, num_jumps=10, column='Sensor_1', window_size=50)
+#        jump_cycles = extract_jump_cycles(df, peak_indices, column='Sensor_1', window_size=50)
+#        filtered_df = filter_df_by_cycles(df, jump_cycles)
+#        store_df_to_csv(filtered_df, f'data/{file}_filtered.csv')
