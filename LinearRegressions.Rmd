@@ -385,4 +385,58 @@ legend("bottomright",
 
 ```
 
+```{r}
+
+
+chu_top <- read.csv("Chu_filtered_top.csv")
+chu_bottom <- read.csv("Chu_filtered_bottom.csv")
+
+
+chu_top_reduced <- dimension_reduce_to_vector(chu_top)
+chu_bottom_reduced <- dimension_reduce_to_vector(chu_bottom)
+
+
+values <- c(chu_top_reduced, chu_bottom_reduced)
+
+plot(values)
+
+plot(chu_top_reduced, chu_bottom_reduced)
+
+
+
+
+
+values <- c(chu_top_reduced, chu_bottom_reduced)
+
+
+group <- c(rep("Top", length(chu_top_reduced)), rep("Bottom", length(chu_bottom_reduced)))
+
+
+index <- c(1:length(chu_top_reduced), 1:length(chu_bottom_reduced))
+
+colors <- ifelse(group == "Top", "blue", "red")
+
+
+plot(index, values,
+     col = colors,
+     pch = 16,
+     main = "Top vs. Bottom Dimension-Reduced Values",
+     xlab = "X",
+     ylab = "Y")
+
+
+legend("bottomright", legend = c("Top", "Bottom"), col = c("blue", "red"), pch = 16)
+
+
+
+
+
+
+
+
+
+
+
+
+```
 
