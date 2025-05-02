@@ -1,0 +1,388 @@
+---
+title: "Linear Regressions"
+output: html_document
+date: "2025-04-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+
+jake <- read.csv("Jake_filtered.csv")
+chu <- read.csv("Chu_filtered.csv")
+
+
+library(stats)
+
+dimension_reduce_to_vector <- function(df) {
+  if (!is.data.frame(df)) stop("Input must be a data frame.")
+  
+  numeric_df <- df[, sapply(df, is.numeric)]
+  
+  numeric_df_t <- t(numeric_df)
+  
+  pca_result <- prcomp(numeric_df_t, center = TRUE, scale. = TRUE)
+  
+  first_pc <- pca_result$x[, 1]
+  
+  return(as.matrix(first_pc))
+}
+
+jake_reduced <- dimension_reduce_to_vector(jake)
+chu_reduced <- dimension_reduce_to_vector(chu)
+
+
+
+```
+
+
+```{r}
+
+
+values <- c(jake_reduced, chu_reduced, emma_reduced)
+
+
+group <- c(rep("Jake", length(jake_reduced)),
+           rep("Chu", length(chu_reduced)),
+           rep("Emma", length(emma_reduced)))
+
+index <- c(1:length(jake_reduced),
+           1:length(chu_reduced),
+           1:length(emma_reduced))
+
+colors <- ifelse(group == "Chu", "blue",
+          ifelse(group == "Jake", "red", "green"))
+
+
+plot(index, values,
+     col = colors,
+     pch = 16,
+     main = "Dimension-Reduced Values: Jake, Chu, and Emma",
+     xlab = "Index",
+     ylab = "Reduced Value")
+
+legend("bottomright",
+       legend = c("Chu", "Jake", "Emma"),
+       col = c("blue", "red", "green"),
+       pch = 16)
+
+
+```
+
+
+
+
+```{r}
+
+
+jake_reduced <- dimension_reduce_to_vector(jake)
+chu_reduced <- dimension_reduce_to_vector(chu)
+
+
+
+group <- rep(c("Chu", "Jake"), each = 86) 
+
+colors <- ifelse(group == "Chu", "blue", "red")
+
+plot(jake_reduced, chu_reduced, col = colors, pch = 16, main = "Chu vs. Jake", xlab = "X", ylab = "Y")
+
+legend("topright", legend = c("Chu", "Jake"), col = c("blue", "red"), pch = 16)
+
+abline(lm(jake_reduced ~ chu_reduced), lwd = 2, col = "green")
+
+r <- cor(jake_reduced, chu_reduced)
+
+usr <- par("usr")
+
+text(x = usr[1] + 0.9 * diff(usr[1:2]), 
+     y = usr[4] - 0.95 * diff(usr[3:4]), 
+     labels = paste0("r = ", round(r, 2)),
+     col = "black",
+     cex = 1.2,
+     font = 2)
+
+
+
+
+```
+
+```{r}
+
+
+values <- c(jake_reduced, emma_reduced)
+
+
+group <- c(rep("Jake", length(jake_reduced)), rep("Emma", length(chu_reduced)))
+
+
+index <- c(1:length(jake_reduced), 1:length(emma_reduced))
+
+
+colors <- ifelse(group == "Emma", "blue", "red")
+
+
+plot(index, values,
+     col = colors,
+     pch = 16,
+     main = "Jake and Emma Dimension-Reduced Values",
+     xlab = "X",
+     ylab = "Y")
+
+legend("topright", legend = c("Emma", "Jake"), col = c("blue", "red"), pch = 16)
+
+```
+
+```{r}
+
+emma <- read.csv("Emma_filtered.csv")
+
+emma_reduced <- dimension_reduce_to_vector(emma)
+
+cor(jake_reduced, emma_reduced)
+
+cor(chu_reduced, emma_reduced)
+
+```
+
+
+
+
+
+```{r}
+
+
+values <- c(jake_reduced, connor_reduced)
+
+
+group <- c(rep("Jake", length(jake_reduced)), rep("Connor", length(connor_reduced)))
+
+
+index <- c(1:length(jake_reduced), 1:length(connor_reduced))
+
+
+colors <- ifelse(group == "Connor", "blue", "red")
+
+
+plot(index, values,
+     col = colors,
+     pch = 16,
+     main = "Jake and Connor Dimension-Reduced Values",
+     xlab = "X",
+     ylab = "Y")
+
+
+legend("topright", legend = c("Connor", "Jake"), col = c("blue", "red"), pch = 16)
+
+
+```
+
+
+
+```{r}
+
+owend <- read.csv("OwenDummy_filtered.csv")
+
+
+```
+
+```{r}
+
+
+values <- c(jake_reduced, owend_reduced)
+
+
+group <- c(rep("Jake", length(jake_reduced)), rep("Owen Dummy", length(owend_reduced)))
+
+
+index <- c(1:length(jake_reduced), 1:length(owend_reduced))
+
+colors <- ifelse(group == "Owen Dummy", "blue", "red")
+
+
+plot(index, values,
+     col = colors,
+     pch = 16,
+     main = "Jake and Owen Dummy Dimension-Reduced Values",
+     xlab = "X",
+     ylab = "Y")
+
+
+legend("bottomright", legend = c("Owen Dummy", "Jake"), col = c("blue", "red"), pch = 16)
+
+
+
+
+
+
+
+
+
+
+```
+
+```{r}
+
+
+
+colin <- read.csv("ColinSloan_filtered.csv")
+
+garrett <- read.csv("Garrett_filtered.csv")
+
+colin_reduced <- dimension_reduce_to_vector(colin)
+
+garrett_reduced <- dimension_reduce_to_vector(garrett)
+
+
+
+```
+
+
+```{r}
+
+
+values <- c(colin_reduced, garrett_reduced)
+
+
+group <- c(rep("Colin", length(colin_reduced)), rep("Garrett", length(garrett_reduced)))
+
+
+index <- c(1:length(colin_reduced), 1:length(garrett_reduced))
+
+
+colors <- ifelse(group == "Garrett", "blue", "red")
+
+
+plot(index, values,
+     col = colors,
+     pch = 16,
+     main = "Colin and Garrett Dimension-Reduced Values",
+     xlab = "X",
+     ylab = "Y")
+
+
+legend("topright", legend = c("Garrett", "Colin"), col = c("blue", "red"), pch = 16)
+
+
+```
+
+```{r}
+
+values <- c(colin_reduced, garrett_reduced, jake_reduced, chu_reduced)
+
+
+group <- c(rep("Colin", length(colin_reduced)),
+           rep("Garrett", length(garrett_reduced)),
+           rep("Jake", length(jake_reduced)),
+           rep("Chu", length(chu_reduced)))
+
+index <- c(1:length(colin_reduced),
+           1:length(garrett_reduced),
+           1:length(jake_reduced),
+           1:length(chu_reduced))
+
+
+colors <- ifelse(group == "Garrett", "blue",
+          ifelse(group == "Colin", "red",
+          ifelse(group == "Jake", "green", "yellow")))
+
+
+plot(index, values,
+     col = colors,
+     pch = 16,
+     main = "Dimension-Reduced Values: Colin, Garrett, Jake, Chu",
+     xlab = "Index",
+     ylab = "Reduced Value")
+
+
+legend("bottomright",
+       legend = c("Garrett", "Colin", "Jake", "Chu"),
+       col = c("blue", "red", "green", "yellow"),
+       pch = 16)
+
+
+```
+
+
+```{r}
+
+
+values <- c(jake_reduced, chu_reduced, emma_reduced, connor_reduced)
+
+
+group <- c(rep("Jake", length(jake_reduced)),
+           rep("Chu", length(chu_reduced)),
+           rep("Emma", length(emma_reduced)),
+           rep("Connor", length(connor_reduced)))
+
+
+index <- c(1:length(jake_reduced),
+           1:length(chu_reduced),
+           1:length(emma_reduced),
+           1:length(connor_reduced))
+
+
+colors <- ifelse(group == "Chu", "blue",
+          ifelse(group == "Jake", "red",
+          ifelse(group == "Emma", "green", "orange")))
+
+
+plot(index, values,
+     col = colors,
+     pch = 16,
+     main = "Dimension-Reduced Values: Jake, Chu, Emma, Connor",
+     xlab = "Index",
+     ylab = "Reduced Value")
+
+
+legend("bottomright",
+       legend = c("Chu", "Jake", "Emma", "Connor"),
+       col = c("blue", "red", "green", "orange"),
+       pch = 16)
+
+
+
+```
+
+```{r}
+
+
+values <- c(jake_reduced, chu_reduced, emma_reduced, owend_reduced)
+
+
+group <- c(rep("Jake", length(jake_reduced)),
+           rep("Chu", length(chu_reduced)),
+           rep("Emma", length(emma_reduced)),
+           rep("Owen Dummy", length(owend_reduced)))
+
+
+index <- c(1:length(jake_reduced),
+           1:length(chu_reduced),
+           1:length(emma_reduced),
+           1:length(owend_reduced))
+
+
+colors <- ifelse(group == "Chu", "blue",
+          ifelse(group == "Jake", "red",
+          ifelse(group == "Emma", "green", "orange")))
+
+
+plot(index, values,
+     col = colors,
+     pch = 16,
+     main = "Dimension-Reduced Values: Jake, Chu, Emma, Owen Dummy",
+     xlab = "Index",
+     ylab = "Reduced Value")
+
+
+legend("bottomright",
+       legend = c("Chu", "Jake", "Emma", "Owen Dummy"),
+       col = c("blue", "red", "green", "orange"),
+       pch = 16)
+
+
+```
+
+
