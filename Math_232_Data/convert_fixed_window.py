@@ -12,7 +12,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 VALID_MIN_FLIGHT_TIME = 0.3
 VALID_MAX_FLIGHT_TIME = 0.82
 NUM_SENSORS = 80
-DROP_SENSORS_THRESHOLD = 0.4
+DROP_SENSORS_THRESHOLD = 0.3
 COSINE_SIMILARITY_THRESHOLD = 0.96
 SUM_THRESHOLD = 20
 HALF_WINDOW_SIZE = 85
@@ -24,8 +24,8 @@ def pool_df(df, pool_type='sum'):
     # sum across all sensors
     if pool_type == 'sum':
         df['sum'] = df.iloc[:, 5:].sum(axis=1)
-        df['sum_top'] = df.iloc[:, 5:85].sum(axis=1)
-        df['sum_bottom'] = df.iloc[:, 85:].sum(axis=1)
+        df['sum_top'] = df.iloc[:, 5:45].sum(axis=1)
+        df['sum_bottom'] = df.iloc[:, 45:].sum(axis=1)
     elif pool_type == 'mean':
         df['mean'] = df.iloc[:, 5:].mean(axis=1)
     elif pool_type == 'median':
@@ -431,8 +431,8 @@ def convert_and_plot(file_path):
     filtered_df_top, max_similarities_top = filter_highest_pairwise_similar_jump_cycles(summed_jump_cycles_df_top, similarity_threshold=COSINE_SIMILARITY_THRESHOLD)
     filtered_df_bottom, max_similarities_bottom = filter_highest_pairwise_similar_jump_cycles(summed_jump_cycles_df_bottom, similarity_threshold=COSINE_SIMILARITY_THRESHOLD)
     # plot the jump cycles
-    #plot_jump_cycles(filtered_df_top, name=file_path.split('/')[-1])
-    #plot_jump_cycles(filtered_df_bottom, name=file_path.split('/')[-1])
+    # plot_jump_cycles(filtered_df_top, name=file_path.split('/')[-1])
+    # plot_jump_cycles(filtered_df_bottom, name=file_path.split('/')[-1])
     # save the filtered df to a csv file
     save_filtered_df(filtered_df_top, file_path.replace(".txt", "_filtered_top.csv"))
     save_filtered_df(filtered_df_bottom, file_path.replace(".txt", "_filtered_bottom.csv"))
