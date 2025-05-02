@@ -13,6 +13,7 @@ VALID_MIN_FLIGHT_TIME = 0.3
 VALID_MAX_FLIGHT_TIME = 0.82
 NUM_SENSORS = 80
 DROP_SENSORS_THRESHOLD = 0.4
+COSINE_SIMILARITY_THRESHOLD = 0.96
 SUM_THRESHOLD = 20
 HALF_WINDOW_SIZE = 85
 HALF_WINDOW_SIZE = 85
@@ -23,6 +24,8 @@ def pool_df(df, pool_type='sum'):
     # sum across all sensors
     if pool_type == 'sum':
         df['sum'] = df.iloc[:, 5:].sum(axis=1)
+        df['sum_top'] = df.iloc[:, 5:85].sum(axis=1)
+        df['sum_bottom'] = df.iloc[:, 85:].sum(axis=1)
     elif pool_type == 'mean':
         df['mean'] = df.iloc[:, 5:].mean(axis=1)
     elif pool_type == 'median':
@@ -237,16 +240,20 @@ def format_jumps_csv(file_path, jump_cycles: list[pd.DataFrame]):
     # create file name
     file_name = file_path.split('/')[-1]
     file_name = file_name.split('.')[0]
-    summed_file_path = "../Math_232_Data/jump_data_clean/" + file_name + '_jumps_summed.csv'
+    summed_file_path_top = "../Math_232_Data/jump_data_clean/" + file_name + '_jumps_summed_top.csv'
+    summed_file_path_bottom = "../Math_232_Data/jump_data_clean/" + file_name + '_jumps_summed_bottom.csv'
     # all_sensors_file_path = os.path.join(os.path.dirname(file_path), file_name + '_all_sensors.csv')
 
-    summed_jump_cycles = [cycle.loc["sum", :] for cycle in jump_cycles]
-    summed_jump_cycles_df = pd.DataFrame(summed_jump_cycles)
-    summed_jump_cycles_df.to_csv(summed_file_path, index=False)
+    summed_jump_cycles_top = [cycle.loc["sum_top", :] for cycle in jump_cycles]
+    summed_jump_cycles_bottom = [cycle.loc["sum_bottom", :] for cycle in jump_cycles]
+    summed_jump_cycles_df_top = pd.DataFrame(summed_jump_cycles_top)
+    summed_jump_cycles_df_bottom = pd.DataFrame(summed_jump_cycles_bottom)
+    summed_jump_cycles_df_top.to_csv(summed_file_path_top, index=False)
+    summed_jump_cycles_df_bottom.to_csv(summed_file_path_bottom, index=False)
 
     # export the separate sensors too
     # pd.concat(jump_cycles, axis=0).to_csv(all_sensors_file_path, index=False)
-    return summed_jump_cycles_df
+    return summed_jump_cycles_df_top, summed_jump_cycles_df_bottom
 
 def plot_jump_cycles(summed_jump_cycles_df: pd.DataFrame, name=None, separate=False):
     # print("========== PLOTTING JUMP CYCLES ==========")
@@ -411,8 +418,8 @@ def convert(file_path):
 
     # find jump cycles
     jump_cycles = find_jump_cycles(df, valid_jump_sets)
-    summed_jump_cycles_df = format_jumps_csv(file_path, jump_cycles)
-    return summed_jump_cycles_df
+    summed_jump_cycles_df_top, summed_jump_cycles_df_bottom = format_jumps_csv(file_path, jump_cycles)
+    return summed_jump_cycles_df_top, summed_jump_cycles_df_bottom
 
 def save_filtered_df(df, file_path):
     # save the filtered df to a csv file
@@ -420,13 +427,20 @@ def save_filtered_df(df, file_path):
     return
 
 def convert_and_plot(file_path):
-    summed_jump_cycles_df = convert(file_path)
-    filtered_df, max_similarities = filter_highest_pairwise_similar_jump_cycles(summed_jump_cycles_df, similarity_threshold=0.96)
+    summed_jump_cycles_df_top, summed_jump_cycles_df_bottom = convert(file_path)
+    filtered_df_top, max_similarities_top = filter_highest_pairwise_similar_jump_cycles(summed_jump_cycles_df_top, similarity_threshold=COSINE_SIMILARITY_THRESHOLD)
+    filtered_df_bottom, max_similarities_bottom = filter_highest_pairwise_similar_jump_cycles(summed_jump_cycles_df_bottom, similarity_threshold=COSINE_SIMILARITY_THRESHOLD)
     # plot the jump cycles
-    plot_jump_cycles(filtered_df, name=file_path.split('/')[-1])
+    #plot_jump_cycles(filtered_df_top, name=file_path.split('/')[-1])
+    #plot_jump_cycles(filtered_df_bottom, name=file_path.split('/')[-1])
     # save the filtered df to a csv file
-    save_filtered_df(filtered_df, file_path.replace(".txt", "_filtered.csv"))
+    save_filtered_df(filtered_df_top, file_path.replace(".txt", "_filtered_top.csv"))
+    save_filtered_df(filtered_df_bottom, file_path.replace(".txt", "_filtered_bottom.csv"))
     # save the max similarities to a txt file
+    with open(file_path.replace(".txt", "_max_similarities_top.txt"), "w") as f:
+        f.write(str(max_similarities_top))
+    with open(file_path.replace(".txt", "_max_similarities_bottom.txt"), "w") as f:
+        f.write(str(max_similarities_bottom))
     return
 
 
