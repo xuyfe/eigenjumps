@@ -1,0 +1,315 @@
+---
+title: "JumpHeight"
+output: html_document
+date: "2025-04-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(stringr)
+
+```
+
+```{r}
+
+df <- read.csv("Jump_Height.csv")
+
+# df <- df[, c("Name", "Leg.Length", "Femur.Length", "Calf.Length")]
+
+df$CalfLegRatio <- df$Calf.Length / df$Leg.Length
+
+df$Calf.Length <- df$Calf.Length * 0.0254
+
+df$AverageJump <- c(0.4333, 0.5661,0.438,0.5872,0.4936,0.4663,0.4875,0.4418,0.3675,0.3631,0.5398,0.5286,0.4423,0.6822,0.5629,0.4839,0.3697,0.2977,0.2133, 0.4291)
+
+
+```
+
+```{r}
+
+plot(df$CalfLegRatio, df$AverageJump, 
+     main = "Calf:Leg Ratio vs. Average Jump", 
+     pch = 21,
+     xlab = "Calf:Leg Ratio",
+     ylab = "Average Jump Height (m)",
+     col = "blue")
+abline(lm(df$AverageJump ~ df$CalfLegRatio), lwd = 4, col = "brown")
+
+cor(df$CalfLegRatio, df$AverageJump)
+
+
+```
+
+```{r}
+
+plot(df$Calf.Length, df$AverageJump,
+     main = "Calf Length vs. Average Jump", 
+     pch = 21,
+     xlab = "Calf Length",
+     ylab = "Average Jump Height (m)",
+     col = "red")
+abline(lm(df$AverageJump ~ df$CalfLegRatio), lwd = 4, col = "brown")
+
+
+cor(df$Calf.Length, df$AverageJump)
+
+
+
+```
+```{r}
+
+plot(lm(df$AverageJump ~ df$CalfLegRatio))
+
+plot(lm(df$AverageJump ~ df$Calf.Length))
+
+```
+
+```{r}
+
+plot(lm(df$AverageJump ~ df$CalfLegRatio))
+
+plot(lm(df$AverageJump ~ df$Calf.Length))
+
+
+
+
+```
+
+
+
+
+
+
+1 Owen - 0.4333
+2 Colin Sloan - 0.5661
+3 Noah Jung - 0.438
+4 Connor Flood - 0.5872
+5 Matthew Riley - 0.4936
+6 Annie Gu - 0.4663
+7 Skylar Wang - 0.4875
+8 Ian Lim - 0.4418
+9 Jack Pothier - 0.3675
+10 Leo Bloom - 0.3631
+11 Joshua Gao - 0.5398
+12 Garrett Larsen - 0.5286
+13 Emma Peretti - 0.4423
+14 Jake Sun - 0.6822
+15 Chu Anueyiegu - 0.5629
+16 Karoline Hernes - 0.4839
+17 Sylvie Dufallo - 0.3697
+18 Owen No Knees - 0.2977
+19 Annie One Leg - 0.2133
+20 Charles Sun - 0.4291
+
+flight time/flight duration
+
+
+
+```{r}
+
+# no outliers
+
+df <- read.csv("MatthewRiley.csv")
+
+df2 <- read.csv("Jump Height.csv")
+
+slots <- grep("Estimated Vertical:", df$X0)
+
+verts <- data.frame(verticals = numeric(), stringsAsFactors = FALSE)
+
+
+
+for (i in slots) {
+  
+  verts[nrow(verts) + 1, "verticals"] <- str_extract(df$X0[i], "\\d+\\.\\d+")
+  
+}
+
+
+
+verts <- verts %>%
+  top_n(10, wt = verts$verticals)
+
+verts
+
+mean.vertical <- function() {
+  
+  total = 0
+  
+  for (i in 1:10) {
+    
+    
+    total = total + as.numeric(verts$verticals[i])
+    
+    
+  }
+  
+  return (total / 10)
+  
+}
+# slots <- grep("Estimated Vertical:", df$X0)
+
+mean.vertical()
+
+
+```
+
+```{r}
+
+
+# to deal with outliers
+
+df <- read.csv("Charles.csv")
+
+df2 <- read.csv("Jump Height.csv")
+
+slots <- grep("Estimated Vertical:", df$X0)
+
+verts <- data.frame(verticals = character(), stringsAsFactors = FALSE)
+
+
+
+for (i in slots) {
+  
+  verts[nrow(verts) + 1, "ColinSloan"] <- str_extract(df$X0[i], "\\d+\\.\\d+")
+
+  
+}
+
+verts <- verts[verts$ColinSloan > 0.05 & verts$ColinSloan < 0.50, ]
+
+
+verts <- verts %>%
+  top_n(10, wt = verts$ColinSloan)
+
+
+verts
+
+
+
+
+# 
+# for (i in slots) {
+#   
+#   verts[nrow(verts) + 1, "ColinSloan"] <- str_extract(df$X0[i], "\\d+\\.\\d+")
+# 
+#   
+# }
+# 
+# verts <- verts$ColinSloan[verts$ColinSloan > 0.05 & verts$ColinSloan < 1.5, ]
+# 
+# verts
+# 
+# verts <- verts %>%
+#   top_n(10, wt = verts$ColinSloan)
+# 
+# cbind(verts$ColinSloan, verts$Owen)
+# 
+# verts
+
+# 
+
+
+```
+
+
+```{r}
+
+df <- read.csv("ColinSloan.csv")
+
+df2 <- read.csv("Jump Height.csv")
+
+slots <- grep("Estimated Vertical:", df$X0)
+
+verts <- data.frame(verticals = character(), stringsAsFactors = FALSE)
+
+
+
+for (i in slots) {
+  
+  verts[nrow(verts) + 1, "ColinSloan"] <- str_extract(df$X0[i], "\\d+\\.\\d+")
+
+  
+}
+
+verts <- verts[verts$ColinSloan > 0.05 & verts$ColinSloan < 1.5, ]
+
+verts
+
+verts <- verts %>%
+  top_n(10, wt = verts$ColinSloan)
+
+
+verts
+
+
+
+
+```
+
+
+
+
+
+```{r}
+
+
+df <- read.csv("Jake_filtered.csv")
+df2 <- read.csv("Chu_filtered.csv")
+
+
+library(stats)
+
+dimension_reduce_to_vector <- function(df) {
+  if (!is.data.frame(df)) stop("Input must be a data frame.")
+  
+  numeric_df <- df[, sapply(df, is.numeric)]
+  
+  numeric_df_t <- t(numeric_df)
+  
+  # PCA
+  pca_result <- prcomp(numeric_df_t, center = TRUE, scale. = TRUE)
+  
+  # First principal component
+  first_pc <- pca_result$x[, 1]
+  
+  # Turn into 172x1 matrix
+  return(as.matrix(first_pc))
+}
+
+
+
+jake_reduced <- dimension_reduce_to_vector(df)
+chu_reduced <- dimension_reduce_to_vector(df2)
+
+
+
+cor(jake_reduced, chu_reduced)
+
+plot(jake_reduced, chu_reduced)
+
+abline(lm(chu_reduced ~ jake_reduced), col = "red", lwd = 2)
+
+
+
+```
+```{r}
+
+
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
