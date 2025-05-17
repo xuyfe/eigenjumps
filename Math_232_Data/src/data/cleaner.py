@@ -1,5 +1,6 @@
 import pandas as pd
 from typing import List
+from src.data.utils import reorder_columns
 
 VALID_MIN_FLIGHT_TIME = 0.3
 VALID_MAX_FLIGHT_TIME = 1.0
@@ -44,14 +45,23 @@ class DataCleaner:
                 df[col] = 0
         if self.pool_type == "sum":
             # add a "cleaned_sum" column
+            col_list = df.columns.tolist()
+            reordered_col_list = col_list[:8] + ['cleaned_sum'] + col_list[8:]
             df['cleaned_sum'] = df[sensor_cols].sum(axis=1)
         elif self.pool_type == "mean":
             # add a "cleaned_mean" column
+            col_list = df.columns.tolist()
+            reordered_col_list = col_list[:8] + ['cleaned_mean'] + col_list[8:]
             df['cleaned_mean'] = df[sensor_cols].mean(axis=1)
         elif self.pool_type == "median":
             # add a "cleaned_median" column
+            col_list = df.columns.tolist()
+            reordered_col_list = col_list[:8] + ['cleaned_median'] + col_list[8:]
             df['cleaned_median'] = df[sensor_cols].median(axis=1)
-        self.df = df
+        else:
+            raise ValueError(f"Invalid pool type: {self.pool_type}")
+        
+        self.df = reorder_columns(df, reordered_col_list)
         return
     
     def clean_double_jumps(self):
