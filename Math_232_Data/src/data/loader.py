@@ -2,16 +2,28 @@ import pandas as pd
 import re
 import os
 from typing import List, Tuple
+from src.data.utils import reorder_columns
 
 # Data Loading Constants
 MAX_FLIGHT_TIME_LOOKAHEAD = 3
 NUM_SENSORS = 80
+LOG_PATH = "/Users/srwang/Documents/MATH232/Math-232-Project/Math_232_Data/logs"
+CSV_PATH = "/Users/srwang/Documents/MATH232/Math-232-Project/Math_232_Data/csv"
 
 class DataLoader:
-    def __init__(self, txt_path: str):
+    def __init__(self, txt_path: str, pool_type: str = "sum"):
         self.txt_path = txt_path
+        self.error_path = os.path.join(LOG_PATH, f"{os.path.basename(txt_path).split('.')[0]}_error.txt")
+        self.csv_path = os.path.join(CSV_PATH, f"{os.path.basename(txt_path).split('.')[0]}_cleaned.csv")
+        self.pool_type = pool_type
+
         self.df, self.jump_sets = self.process_txt()
-        self.error_path = os.path.join(os.path.dirname(txt_path), "error.txt")
+        self.df_to_csv()
+
+    def df_to_csv(self):
+        if self.df is not None:
+            self.df.to_csv(self.csv_path, index=False)
+        return
 
     def process_txt(self) -> Tuple[pd.DataFrame, List[dict]]:
         '''
@@ -23,10 +35,13 @@ class DataLoader:
                 - flight_time (can be None if not found)
                 - estimated_vertical (can be None if not found)
         '''
-
+        self.log_error(f"Processing {self.txt_path}")
+        
+        # Set of special words
+        special_words = {"Release", "Landing", "Calibration", "Flight", "Estimated"}
 
         # Get the calibrated rows
-        rows = self.get_calibrated_rows()
+        rows, calibration_index = self.get_calibrated_rows()
         if rows is None:
             self.log_error(f"No calibrated rows found for {self.txt_path}")
             return None, None
@@ -39,12 +54,12 @@ class DataLoader:
         # Process each row
         for i, line in enumerate(rows):
             # Handle non-release/landing lines
-            if not ("Release" in line or "Landing" in line):
+            if not any(word in line for word in special_words):
                 row = self.process_regular_row(line)
                 if row:
                     dataframe_rows.append(row)
                 else:
-                    self.log_error(f"Error processing row {i}: {line}")
+                    self.log_error(f"Error processing row {i + calibration_index}: {line}")
 
             # Handle release/landing lines
             else:
@@ -70,14 +85,14 @@ class DataLoader:
                     flight_time_match, estimated_vertical = self.process_data_rows(rows[i + 1:landing_end_index])
                     
                     # VALID FLIGHT TIME FOUND
-                    if not flight_time_match:
-                        self.log_error(f"No flight time found for landing at line {i}")
+                    if flight_time_match is None:
+                        self.log_error(f"No flight time found for landing at row {i + calibration_index}")
                     else:
                         current_jump["flight_time"] = float(flight_time_match)                    
 
                     # VALID ESTIMATED VERTICAL FOUND
-                    if not estimated_vertical:
-                        self.log_error(f"No estimated vertical found for landing at line {i}")
+                    if estimated_vertical is None:
+                        self.log_error(f"No estimated vertical found for landing at row {i + calibration_index}")
                     else:
                         current_jump["estimated_vertical"] = float(estimated_vertical)
 
@@ -92,9 +107,69 @@ class DataLoader:
         df['Timestamp'] = pd.to_datetime(df['Timestamp'])
 
         # add the "in_flight" column to the dataframe
-        clean_df = self.add_in_flight_column(df, jump_sets)
-        return clean_df, jump_sets
-    
+        df = self.add_in_flight_column(df, jump_sets)
+
+        # add the pooled columns to the dataframe
+        df = self.add_pooled_columns(df)
+
+        # add the jump index column to the dataframe
+        df = self.add_jump_index_column(df, jump_sets)
+
+        # reorder the columns
+        if self.pool_type == "sum":
+            col_list = ['Timestamp', 'is_release', 'is_landing', 'in_flight', 'jump_index', 'sum', 'sum_top', 'sum_bottom']
+        elif self.pool_type == "mean":
+            col_list = ['Timestamp', 'is_release', 'is_landing', 'in_flight', 'jump_index', 'mean', 'mean_top', 'mean_bottom']
+        elif self.pool_type == "median":
+            col_list = ['Timestamp', 'is_release', 'is_landing', 'in_flight', 'jump_index', 'median', 'median_top', 'median_bottom']
+        else:
+            raise ValueError(f"Invalid pool type: {self.pool_type}")
+
+        df = reorder_columns(df, col_list)
+        return df, jump_sets
+
+    def add_jump_index_column(self, df: pd.DataFrame, jump_sets: List[dict]) -> pd.DataFrame:
+        df['jump_index'] = -1
+
+        for i, jump_set in enumerate(jump_sets):
+            release_time = pd.to_datetime(jump_set['release_time'])
+            landing_time = pd.to_datetime(jump_set['landing_time'])
+            jump_indices = df[(df['Timestamp'] >= release_time) & (df['Timestamp'] <= landing_time)].index
+            df.loc[jump_indices, 'jump_index'] = i
+        return df
+
+    def add_pooled_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        sensor_cols = df.columns[4:]
+        top_sensor_cols = df.columns[4:44]
+        bottom_sensor_cols = df.columns[44:]
+        if self.pool_type == "sum":
+            sum_all = df[sensor_cols].sum(axis=1)
+            sum_top = df[top_sensor_cols].sum(axis=1)
+            sum_bottom = df[bottom_sensor_cols].sum(axis=1)
+
+            df['sum'] = sum_all
+            df['sum_top'] = sum_top
+            df['sum_bottom'] = sum_bottom
+        elif self.pool_type == "mean":
+            mean_all = df[sensor_cols].mean(axis=1)
+            mean_top = df[top_sensor_cols].mean(axis=1)
+            mean_bottom = df[bottom_sensor_cols].mean(axis=1)
+
+            df['mean'] = mean_all
+            df['mean_top'] = mean_top
+            df['mean_bottom'] = mean_bottom
+        elif self.pool_type == "median":
+            median_all = df[sensor_cols].median(axis=1)
+            median_top = df[top_sensor_cols].median(axis=1)
+            median_bottom = df[bottom_sensor_cols].median(axis=1)
+
+            df['median'] = median_all
+            df['median_top'] = median_top
+            df['median_bottom'] = median_bottom
+        else:
+            raise ValueError(f"Invalid pool type: {self.pool_type}")
+        return df
+
     def add_in_flight_column(self, df: pd.DataFrame, jump_sets: List[dict]) -> pd.DataFrame:
         for jump_set in jump_sets:
             release_time = pd.to_datetime(jump_set['release_time'])
@@ -134,7 +209,7 @@ class DataLoader:
         return flight_time, estimated_vertical
 
 
-    def get_calibrated_rows(self) -> List[str] | None:
+    def get_calibrated_rows(self) -> Tuple[List[str], int] | Tuple[None, None]:
         with open(self.txt_path, 'r') as file:
             lines = file.readlines()
 
@@ -147,10 +222,10 @@ class DataLoader:
                 break
         
         if calibration_index == 0:
-            return None
+            return None, None
         
         else:
-            return lines[calibration_index:]
+            return lines[calibration_index:], calibration_index
 
     def log_error(self, message: str) -> None:
         with open(self.error_path, "a") as f:

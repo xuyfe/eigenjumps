@@ -132,6 +132,7 @@ def find_valid_jump_set(df, jump_sets, sum_threshold, min_separation=60):
         # Get the time window for this jump
         release_time = pd.to_datetime(jump_set['release_time'])
         landing_time = pd.to_datetime(jump_set['landing_time'])
+
         # Filter the DataFrame for this window
         window_df = df[(df['Timestamp'] >= release_time) & (df['Timestamp'] <= landing_time)]
 

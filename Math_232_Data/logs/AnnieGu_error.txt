@@ -1,0 +1,5 @@
+Processing /Users/srwang/Documents/MATH232/Math-232-Project/Math_232_Data/data/AnnieGu.txt
+Processing /Users/srwang/Documents/MATH232/Math-232-Project/Math_232_Data/data/AnnieGu.txt
+Processing /Users/srwang/Documents/MATH232/Math-232-Project/Math_232_Data/data/AnnieGu.txt
+Processing /Users/srwang/Documents/MATH232/Math-232-Project/Math_232_Data/data/AnnieGu.txt
+Processing /Users/srwang/Documents/MATH232/Math-232-Project/Math_232_Data/data/AnnieGu.txt
