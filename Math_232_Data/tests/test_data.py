@@ -14,11 +14,13 @@ def test_loader():
     assert len(loader.df) > 0
 
 def test_cleaner():
-    loader = DataLoader(ANNIE_PATH)
-    cleaner = DataCleaner(loader.df, loader.jump_sets)
-    cleaner.clean_all()
-    print(cleaner.df.head())
-    print(cleaner.jump_sets)
+    raw_data = DataLoader(ANNIE_PATH)
+    cleaned_data = DataCleaner(raw_data.df, raw_data.jump_sets)
+    cleaned_data.clean_all()
+    print(cleaned_data.df.head())
+    print(cleaned_data.jump_sets)
+    # save to csv
+    cleaner.df.to_csv(loader.csv_path, index=False)
 
 if __name__ == "__main__":
-    test_loader()
+    test_cleaner()

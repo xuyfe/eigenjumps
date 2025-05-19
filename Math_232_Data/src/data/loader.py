@@ -16,16 +16,16 @@ class DataLoader:
         self.error_path = os.path.join(LOG_PATH, f"{os.path.basename(txt_path).split('.')[0]}_error.txt")
         self.csv_path = os.path.join(CSV_PATH, f"{os.path.basename(txt_path).split('.')[0]}_cleaned.csv")
         self.pool_type = pool_type
-
-        self.df, self.jump_sets = self.process_txt()
-        self.df_to_csv()
+        self.df, self.jump_sets = None, None
+        self.process_txt()
+        # self.df_to_csv()
 
     def df_to_csv(self):
         if self.df is not None:
             self.df.to_csv(self.csv_path, index=False)
         return
 
-    def process_txt(self) -> Tuple[pd.DataFrame, List[dict]]:
+    def load_data(self) -> Tuple[pd.DataFrame, List[dict]]:
         '''
         Process the txt file into:
             1) Pandas dataframe
