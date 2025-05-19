@@ -9,6 +9,7 @@ NUM_SENSORS = 80
 
 DROP_SENSORS_THRESHOLD = 0.3
 MIN_JUMP_SEPARATION_MS = 2000 #2 seconds
+TO_TIMEDELTA_MS = lambda x: pd.to_timedelta(x, unit='ms')
 
 COSINE_SIMILARITY_THRESHOLD = 0.96
 MIN_SUM_THRESHOLD = 20
@@ -29,10 +30,10 @@ class DataCleaner:
         self.pool_type = pool_type if pool_type in POOL_TYPES else "sum"
 
     def clean_all(self):
-        self.clean_inactive_sensors()
+        # self.clean_inactive_sensors()
         self.clean_invalid_flight_times()
-        self.clean_double_jumps()
-        self.clean_invalid_pressures()
+        # self.clean_double_jumps()
+        # self.clean_invalid_pressures()
         return
 
     def clean_inactive_sensors(self):
@@ -78,7 +79,7 @@ class DataCleaner:
             landing_time = pd.to_datetime(jump['landing_time'])
 
             # Check for minimum separation from last valid jump
-            if last_valid_landing_time is not None and (release_time - last_valid_landing_time) < MIN_JUMP_SEPARATION_MS:
+            if last_valid_landing_time is not None and (release_time - last_valid_landing_time) < TO_TIMEDELTA_MS(MIN_JUMP_SEPARATION_MS):
                 invalid_jump_sets.append(jump)
                 continue
             

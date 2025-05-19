@@ -9,6 +9,7 @@ MAX_FLIGHT_TIME_LOOKAHEAD = 3
 NUM_SENSORS = 80
 LOG_PATH = "/Users/srwang/Documents/MATH232/Math-232-Project/Math_232_Data/logs"
 CSV_PATH = "/Users/srwang/Documents/MATH232/Math-232-Project/Math_232_Data/csv"
+LOGGING_WORDS = {"Release", "Landing", "Calibration", "Flight", "Estimated"}
 
 class DataLoader:
     def __init__(self, txt_path: str, pool_type: str = "sum"):
@@ -16,8 +17,7 @@ class DataLoader:
         self.error_path = os.path.join(LOG_PATH, f"{os.path.basename(txt_path).split('.')[0]}_error.txt")
         self.csv_path = os.path.join(CSV_PATH, f"{os.path.basename(txt_path).split('.')[0]}_cleaned.csv")
         self.pool_type = pool_type
-        self.df, self.jump_sets = None, None
-        self.process_txt()
+        self.df, self.jump_sets = self.load_data()
         # self.df_to_csv()
 
     def df_to_csv(self):
@@ -37,9 +37,6 @@ class DataLoader:
         '''
         self.log_error(f"Processing {self.txt_path}")
         
-        # Set of special words
-        special_words = {"Release", "Landing", "Calibration", "Flight", "Estimated"}
-
         # Get the calibrated rows
         rows, calibration_index = self.get_calibrated_rows()
         if rows is None:
@@ -54,7 +51,7 @@ class DataLoader:
         # Process each row
         for i, line in enumerate(rows):
             # Handle non-release/landing lines
-            if not any(word in line for word in special_words):
+            if not any(word in line for word in LOGGING_WORDS):
                 row = self.process_regular_row(line)
                 if row:
                     dataframe_rows.append(row)
